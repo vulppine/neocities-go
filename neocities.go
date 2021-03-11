@@ -50,6 +50,8 @@ var (
 	MissingReq = errors.New("a required variable is missing")
 )
 
+// NeoTime represents the time value used by NeoCities
+// for unmarshalling via encoding/json.
 type NeoTime time.Time
 
 func (t *NeoTime) UnmarshalJSON(b []byte) error {
@@ -191,6 +193,9 @@ func ReadFile(filename string) (string, error) {
 	return string(s), nil
 }
 
+// MakeMIMEMultipartFile makes a MIME multipart body
+// based on the Reader given to it, and the name
+// given to it for the file name.
 func MakeMIMEMultipartFile(f io.Reader, name string) (*bytes.Buffer, string, error) {
 	b := new(bytes.Buffer)
 	w := multipart.NewWriter(b)
@@ -198,8 +203,6 @@ func MakeMIMEMultipartFile(f io.Reader, name string) (*bytes.Buffer, string, err
 	if err != nil {
 		return nil, "", err
 	}
-
-	w.SetBoundary("NEOCITIES-GO-CLIENT")
 
 	/*
 	h := make(textproto.MIMEHeader)
@@ -242,7 +245,7 @@ func (s *Site) UploadFile(file string, name string, c *APIClient) error {
 	}
 
 	if file == "" {
-		return errors.New("no file provided")
+		return fmt.Errorf("%w - file", MissingReq)
 	}
 
 	f, err := os.Open(file)
@@ -306,6 +309,10 @@ func (s *Site) Push(dir string, c *APIClient) error {
 		}
 	}
 
+	if dir == "" {
+		return fmt.Errorf("%w - dir", MissingReq)
+	}
+
 	walk := func(p string, d fs.DirEntry, e error) error {
 		if !d.IsDir() {
 			err = s.UploadFile(p, p, c)
@@ -334,6 +341,10 @@ func (s *Site) DeleteFiles(c *APIClient, files ...string) error {
 		if errors.Is(err, NoKey) {
 			return err
 		}
+	}
+
+	if len(files) == 0 {
+		return fmt.Errorf("%w - files", MissingReq)
 	}
 
 	d := make(url.Values)
@@ -423,6 +434,10 @@ func (s *Site) List(path string, c *APIClient) ([]SiteFile, error) {
 		if errors.Is(err, NoKey) {
 			return l.Files, err
 		}
+	}
+
+	if path == "" {
+		return l.Files, fmt.Errorf("%w - path", MissingReq)
 	}
 
 	req, err := c.NewAPIRequest(nil)
